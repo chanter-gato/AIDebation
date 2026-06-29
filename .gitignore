@@ -1,0 +1,8 @@
+key.txt
+.env
+__pycache__/
+*.pyc
+
+# ペルソナ設定の入ったJSONファイルをGitHubに上げない
+config/agents/*.json
+config/judge/*.json

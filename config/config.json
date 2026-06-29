@@ -1,0 +1,6 @@
+{
+  "debate_topic": "ミルクティーに砂糖は入れるべきか否か？",
+  "rounds": 1,
+  "model": "models/gemini-3.1-flash-lite",
+  "system_goal": "論理的かつ情熱的な討論を行うこと。"
+}
