@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI DEVIATION - BATTLE ARENA</title>
+    <link rel="stylesheet" href="style-battle.css">
+</head>
+<body>
+
+    <div class="arena-container">
+        <header class="arena-header">
+            <div class="match-title">DEBATE MATCH</div>
+            <div class="topic-box">
+                <span class="topic-label">THEME</span>
+                <h1 class="topic-text" id="battle-theme">ディベートテーマを読み込み中...</h1>
+            </div>
+        </header>
+
+        <main class="battle-timeline" id="battle-timeline">
+        </main>
+
+        <footer class="arena-footer">
+            <a href="index.html" class="btn btn-exit">アリーナを終了して戻る</a>
+            <button type="button" class="btn btn-next" id="next-turn-btn">ディベートを開始する</button>
+        </footer>
+    </div>
+
+    <script>
+// --- グローバル管理変数 ---
+let ruleData = null;
+let judgeData = null;
+let activePlayers = []; 
+
+let currentRound = 1;
+let totalRounds = 3;
+let apiKey = "";
+let theme = "";
+let debateHistory = [];
+
+let turnQueue = []; 
+let currentPhase = "START"; 
+
+// 1. 初期化処理
+window.addEventListener('DOMContentLoaded', () => {
+    theme = localStorage.getItem('devate_current_theme') || "テーマ未設定";
+    totalRounds = parseInt(localStorage.getItem('devate_total_turns')) || 3;
+    apiKey = localStorage.getItem('devate_gemini_apikey') || "";
+    document.getElementById('battle-theme').textContent = theme;
+
+    ruleData = JSON.parse(localStorage.getItem('devate_rules') || "{}");
+    judgeData = JSON.parse(localStorage.getItem('devate_judge') || "{}");
+
+    const idsStr = localStorage.getItem('devate_active_player_ids');
+    const playerIds = idsStr ? JSON.parse(idsStr) : ['1', '2'];
+
+    playerIds.forEach(id => {
+        const pData = localStorage.getItem(`devate_player_${id}`);
+        if (pData) {
+            const parsed = JSON.parse(pData);
+            parsed.isLeft = (id % 2 !== 0); 
+            activePlayers.push(parsed);
+        }
+    });
+
+    if (activePlayers.length < 2) {
+        activePlayers = [
+            { ai_name: "PLAYER 1", isLeft: true },
+            { ai_name: "PLAYER 2", isLeft: false }
+        ];
+    }
+});
+
+// 2. Python (api_bridge.py) へ通信を委譲するロジック
+async function callGemini(systemInstruction, userPrompt) {
+    if (!apiKey) throw new Error("APIキーが設定されていません。");
+
+    const response = await fetch('http://127.0.0.1:5000/generate', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            api_key: apiKey,
+            system_prompt: systemInstruction,
+            user_prompt: userPrompt
+        })
+    });
+    
+    if (!response.ok) throw new Error("通信に失敗しました");
+    const data = await response.json();
+    return data.reply;
+}
+
+// 3. ゲーム進行・シャッフルロジック
+document.getElementById('next-turn-btn').addEventListener('click', async function() {
+    const nextBtn = this; // ここで明示的に定義
+    nextBtn.disabled = true;
+
+    try {
+        if (currentPhase === "START") {
+            appendTurnSection(currentRound);
+            turnQueue = [...activePlayers].sort(() => Math.random() - 0.5);
+            currentPhase = "SPEAKING";
+        }
+
+        if (currentPhase === "SPEAKING") {
+            const activePlayer = turnQueue.shift(); 
+            nextBtn.textContent = `${activePlayer.ai_name} 思考中...`;
+
+            const systemPrompt = `あなたは ${activePlayer.ai_name} です。性格: ${activePlayer.ai_persona}。お題: ${theme}。論理的かつ情熱的に反論すること。`;
+            const userPrompt = `これまでの議論: ${debateHistory.join('\n')}\nあなたの発言:`;
+
+            const reply = await callGemini(systemPrompt, userPrompt);
+            
+            await appendMessage(activePlayer.isLeft, activePlayer.ai_name, reply, nextBtn);
+            debateHistory.push(`${activePlayer.ai_name}: ${reply}`);
+
+            if (turnQueue.length === 0) {
+                if (currentRound >= totalRounds) {
+                    currentPhase = "JUDGE";
+                    nextBtn.textContent = "ジャッジ判定へ ＞";
+                } else {
+                    currentRound++;
+                    currentPhase = "START";
+                    nextBtn.textContent = `第${currentRound}ラウンドへ ＞`;
+                }
+            } else {
+                nextBtn.textContent = "次の発言者へ ＞";
+            }
+            return; // typeWriter終了時にボタン有効化されるためここでは終了
+        }
+
+        if (currentPhase === "JUDGE") {
+            nextBtn.textContent = "審判中...";
+            const judgeReply = await callGemini("あなたは公平な審判です。判定理由を含めJSONで出力してください。", `テーマ: ${theme}\n議論: ${debateHistory.join('\n')}`);
+            appendJudgeSection(judgeData.judge_name || "JUDGE", "判定終了", judgeReply);
+            nextBtn.textContent = "ディベート終了";
+            currentPhase = "END";
+            nextBtn.disabled = false;
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert(`エラー: ${error.message}`);
+        nextBtn.disabled = false;
+        nextBtn.textContent = "リトライ";
+    }
+});
+
+// --- UI表示関数 ---
+function appendMessage(isLeft, name, text, nextBtn) {
+    return new Promise((resolve) => {
+        const tl = document.getElementById('battle-timeline');
+        const wrapper = document.createElement('div');
+        wrapper.className = `message-wrapper ${isLeft ? 'player-1' : 'player-2'}`;
+        wrapper.innerHTML = `<div class="speaker-meta"><span class="speaker-name">${name}</span></div><div class="speech-bubble"></div>`;
+        tl.appendChild(wrapper);
+
+        const bubble = wrapper.querySelector('.speech-bubble');
+        let index = 0;
+        
+        function typeWriter() {
+            const nextBtn = document.getElementById('next-turn-btn');
+            const bubble = document.querySelector('.speech-bubble'); // 正しい吹き出し要素を指定
+
+            if (index < text.length) {
+                let char = text.charAt(index);
+        
+                // 句読点（。）が来たら改行して少し待機
+                if (char === '。') {
+                    bubble.innerHTML += char + '<br><br>'; 
+                    index++;
+                    scrollToBottom();
+                    // 句読点の後は少し長め（ms）に停止
+                    setTimeout(typeWriter, 500);
+                } else {
+                    // 通常の文字
+                    bubble.innerHTML += char;
+                    index++;
+                    scrollToBottom();
+                    // 通常の文字の間隔（ms）
+                    setTimeout(typeWriter, 80);
+                }
+            } else {
+                // 終了時：ボタンを有効化
+                if (nextBtn) {
+                    nextBtn.disabled = false;
+                    nextBtn.textContent = "次のターンへ進む";
+                }
+            }
+        }
+        typeWriter();
+    });
+}
+
+function scrollToBottom() {
+    const tl = document.getElementById('battle-timeline');
+    if (tl) tl.scrollTop = tl.scrollHeight;
+}
+
+function appendTurnSection(n) {
+    const tl = document.getElementById('battle-timeline');
+    tl.innerHTML += `<div class="timeline-section-turn">ROUND ${n}</div>`;
+}
+
+function appendJudgeSection(name, winner, reason) {
+    document.getElementById('battle-timeline').innerHTML += `<div class="timeline-section-judge"><strong>${name}</strong><br>${reason}</div>`;
+}
+    </script>
+</body>
+</html>

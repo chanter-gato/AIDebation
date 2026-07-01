@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI DEVIATION - JUDGE ARCHITECT</title>
+    <link rel="stylesheet" href="style-judge.css">
+</head>
+<body>
+
+    <div class="architect-container">
+        
+        <!-- ヘッダーエリア -->
+        <header class="architect-header">
+            <div class="status-badge">⚖️ JUDGE CONSOLE</div>
+            <h1 class="architect-title">JUDGE ARCHITECT</h1>
+            <p class="subtitle">バトルの勝敗を厳正に判定する審判AIのロジックを設計します</p>
+        </header>
+
+        <!-- メインフォームエリア -->
+        <form class="architect-form" onsubmit="return false;">
+            
+            <!-- NAME -->
+            <div class="form-group">
+                <label for="judge-name">
+                    <span class="en">JUDGE NAME</span>
+                    <span class="jp">ジャッジAIの名前・識別子</span>
+                </label>
+                <input type="text" id="judge-name" placeholder="例: Justitia_Core" required>
+            </div>
+            
+            <!-- PERSONA -->
+            <div class="form-group">
+                <label for="judge-persona">
+                    <span class="en">JUDGE PERSONA</span>
+                    <span class="jp">審判の基本性格・判定のスタンス</span>
+                </label>
+                <textarea id="judge-persona" rows="4" placeholder="例: 絶対中立公平。プレイヤーの意見を厳密にルールと照らし合わせ、冷徹かつ客観的に勝敗を宣言する厳格な裁判官。"></textarea>
+            </div>
+            
+            <!-- CONSTRAINTS -->
+            <div class="form-group">
+                <label for="judge-constraints">
+                    <span class="en">CONSTRAINTS</span>
+                    <span class="jp">制約条件・絶対遵守ルール</span>
+                </label>
+                <textarea id="judge-constraints" rows="4" placeholder="例: 判定の理由を必ず箇条書きで3つ出力すること。感情的な言葉による加点は一切認めない。"></textarea>
+            </div>
+
+            <!-- 2段グリッド構成にアップデートされたボタンエリア -->
+            <div class="action-actions-grid">
+                <!-- 上段：基本操作（CANCELの代わりにアリーナへ戻るリンクにしています） -->
+                <a href="index.html" class="btn btn-back">戻る</a>
+                <button type="button" class="btn btn-save">保存</button>
+                
+                <!-- 下段：外部ファイル連携 -->
+                <button type="button" class="btn btn-import" onclick="document.getElementById('file-input').click();">JSON読み込み</button>
+                <button type="button" class="btn btn-export">JSON書き出し</button>
+                
+                <!-- 隠しファイルインプット -->
+                <input type="file" id="file-input" accept=".json" style="display: none;">
+            </div>
+
+        </form>
+
+    </div>
+
+    <!-- ジャッジデータの保存・インポート・エクスポート制御ロジック -->
+    <script>
+        // 1. 【保存ボタン】LocalStorageに保存してアリーナへ戻る
+        document.querySelector('.btn-save').addEventListener('click', () => {
+            const name = document.getElementById('judge-name').value;
+            const persona = document.getElementById('judge-persona').value;
+            const constraints = document.getElementById('judge-constraints').value;
+
+            if (!name) {
+                alert('JUDGE NAMEを入力してください。');
+                return;
+            }
+
+            const judgeData = {
+                judge_name: name,
+                judge_persona: persona,
+                judge_constraints: constraints,
+                updated_at: new Date().toLocaleString('ja-JP')
+            };
+
+            localStorage.setItem('devate_judge', JSON.stringify(judgeData, null, 2));
+            alert('ジャッジ設定をブラウザに保存しました！アリーナに適用されます。');
+            window.location.href = 'index.html';
+        });
+
+        // 2. 【JSON書き出しボタン】手動でファイル保存
+        document.querySelector('.btn-export').addEventListener('click', () => {
+            const name = document.getElementById('judge-name').value;
+            const persona = document.getElementById('judge-persona').value;
+            const constraints = document.getElementById('judge-constraints').value;
+
+            const judgeData = {
+                judge_name: name,
+                judge_persona: persona,
+                judge_constraints: constraints,
+                updated_at: new Date().toLocaleString('ja-JP')
+            };
+
+            const jsonString = JSON.stringify(judgeData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'judge.json'; // ファイル名はjudge.json
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        });
+
+        // 3. 【JSON読み込み機能】外部ファイルをインポート＆同期
+        document.getElementById('file-input').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const judge = JSON.parse(e.target.result);
+                    
+                    document.getElementById('judge-name').value = judge.judge_name || '';
+                    document.getElementById('judge-persona').value = judge.judge_persona || '';
+                    document.getElementById('judge-constraints').value = judge.judge_constraints || '';
+                    
+                    localStorage.setItem('devate_judge', e.target.result);
+                    alert('外部のjudge.jsonから設定を正常に読み込み、ブラウザへ同期しました！');
+                } catch (error) {
+                    alert('ファイルの読み込みに失敗しました。正しいJSON形式か確認してください。');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        });
+
+        // 4. 【初期化】自動復元
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedData = localStorage.getItem('devate_judge');
+            if (savedData) {
+                try {
+                    const judge = JSON.parse(savedData);
+                    if (judge.judge_name) document.getElementById('judge-name').value = judge.judge_name;
+                    if (judge.judge_persona) document.getElementById('judge-persona').value = judge.judge_persona;
+                    if (judge.judge_constraints) document.getElementById('judge-constraints').value = judge.judge_constraints;
+                } catch (e) {
+                    console.error('保存データの自動復元に失敗しました:', e);
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>

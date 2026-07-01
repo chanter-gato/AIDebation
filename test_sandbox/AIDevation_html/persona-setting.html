@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI DEVIATION - PERSONA ARCHITECT</title>
+    <link rel="stylesheet" href="style-persona.css">
+</head>
+<body>
+
+    <div class="architect-container">
+        
+        <!-- ヘッダーエリア -->
+        <header class="architect-header">
+            <div class="status-badge">⚡ AI CONSOLE</div>
+            <h1 class="architect-title">PERSONA ARCHITECT</h1>
+            <p class="subtitle">独自のAIプロンプトを設計し、アリーナへ登録します</p>
+        </header>
+
+        <!-- メインフォームエリア -->
+        <form class="architect-form" onsubmit="return false;">
+            
+            <!-- NAME -->
+            <div class="form-group">
+                <label for="ai-name">
+                    <span class="en">NAME</span>
+                    <span class="jp">AIの名前・識別子</span>
+                </label>
+                <input type="text" id="ai-name" placeholder="例: Astra_Zero" required>
+            </div>
+            
+            <!-- PERSONA -->
+            <div class="form-group">
+                <label for="ai-persona">
+                    <span class="en">PERSONA</span>
+                    <span class="jp">基本性格・口調のベース</span>
+                </label>
+                <textarea id="ai-persona" rows="3" placeholder="例: 冷静沈着で論理的。常に一歩先を見据えたような、静かだが威圧感のある口調。"></textarea>
+            </div>
+            
+            <!-- EXPERTISE -->
+            <div class="form-group">
+                <label for="ai-expertise">
+                    <span class="en">EXPERTISE</span>
+                    <span class="jp">得意分野・知識背景</span>
+                </label>
+                <input type="text" id="ai-expertise" placeholder="例: 量子力学、心理戦、ゲーム理論">
+            </div>
+            
+            <!-- MOTIVATION -->
+            <div class="form-group">
+                <label for="ai-motivation">
+                    <span class="en">MOTIVATION</span>
+                    <span class="jp">行動原理・勝利への動機</span>
+                </label>
+                <input type="text" id="ai-motivation" placeholder="例: 感情に流されず、純粋な論理的最適解によって完全勝利すること">
+            </div>
+            
+            <!-- CONSTRAINTS -->
+            <div class="form-group">
+                <label for="ai-constraints">
+                    <span class="en">CONSTRAINTS</span>
+                    <span class="jp">制約条件・禁止事項</span>
+                </label>
+                <textarea id="ai-constraints" rows="2" placeholder="例: 感情的な言葉（『嬉しい』『怒る』など）の使用を徹底的に排除する。"></textarea>
+            </div>
+
+            <!-- 2段グリッド構成にアップデートされたボタンエリア -->
+            <div class="action-actions-grid">
+                <!-- 上段：基本操作 -->
+                <a href="index.html" class="btn btn-back">戻る</a>
+                <button type="button" class="btn btn-save">保存</button>
+                
+                <!-- 下段：外部ファイル連携 -->
+                <button type="button" class="btn btn-import" onclick="document.getElementById('file-input').click();">JSON読み込み</button>
+                <button type="button" class="btn btn-export">JSON書き出し</button>
+                
+                <!-- 隠しファイルインプット -->
+                <input type="file" id="file-input" accept=".json" style="display: none;">
+            </div>
+
+        </form>
+
+    </div>
+
+    <!-- プレイヤーデータの保存・インポート・エクスポート制御ロジック -->
+    <script>
+// URLからプレイヤーのID（1〜4）を取得する（指定がない場合はデフォルトで1）
+const urlParams = new URLSearchParams(window.location.search);
+const playerId = urlParams.get('id') || '1';
+const storageKey = `devate_player_${playerId}`;
+
+// 1. 【保存ボタン】対応するプレイヤーのキーに保存してアリーナへ戻る
+document.querySelector('.btn-save').addEventListener('click', () => {
+    const name = document.getElementById('ai-name').value;
+    const persona = document.getElementById('ai-persona').value;
+    const expertise = document.getElementById('ai-expertise').value;
+    const motivation = document.getElementById('ai-motivation').value;
+    const constraints = document.getElementById('ai-constraints').value;
+
+    if (!name) {
+        alert('NAMEを入力してください。');
+        return;
+    }
+
+    const playerData = {
+        ai_name: name,
+        ai_persona: persona,
+        ai_expertise: expertise,
+        ai_motivation: motivation,
+        ai_constraints: constraints,
+        updated_at: new Date().toLocaleString('ja-JP')
+    };
+
+    // IDごとの固有のキー（例: devate_player_1）に保存
+    localStorage.setItem(storageKey, JSON.stringify(playerData, null, 2));
+    alert(`プレイヤー${playerId}の設定をブラウザに保存しました！`);
+    window.location.href = 'index.html';
+});
+
+// 2. 【JSON書き出しボタン】手動でファイル保存
+document.querySelector('.btn-export').addEventListener('click', () => {
+    const name = document.getElementById('ai-name').value;
+    const persona = document.getElementById('ai-persona').value;
+    const expertise = document.getElementById('ai-expertise').value;
+    const motivation = document.getElementById('ai-motivation').value;
+    const constraints = document.getElementById('ai-constraints').value;
+
+    const playerData = {
+        ai_name: name,
+        ai_persona: persona,
+        ai_expertise: expertise,
+        ai_motivation: motivation,
+        ai_constraints: constraints,
+        updated_at: new Date().toLocaleString('ja-JP')
+    };
+
+    const jsonString = JSON.stringify(playerData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `player_${playerId}.json`; // ファイル名も個別化
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+});
+
+// 3. 【JSON読み込み機能】外部ファイルをインポート＆同期
+document.getElementById('file-input').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const player = JSON.parse(e.target.result);
+            
+            document.getElementById('ai-name').value = player.ai_name || '';
+            document.getElementById('ai-persona').value = player.ai_persona || '';
+            document.getElementById('ai-expertise').value = player.ai_expertise || '';
+            document.getElementById('ai-motivation').value = player.ai_motivation || '';
+            document.getElementById('ai-constraints').value = player.ai_constraints || '';
+            
+            localStorage.setItem(storageKey, e.target.result);
+            alert(`外部ファイルからプレイヤー${playerId}の設定を正常に読み込みました！`);
+        } catch (error) {
+            alert('ファイルの読み込みに失敗しました。正しいJSON形式か確認してください。');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+});
+
+// 4. 【初期化】固有キーから自動復元
+window.addEventListener('DOMContentLoaded', () => {
+    // 画面のタイトルバッジもどのプレイヤーかわかるようにオマケで書き換え
+    const badge = document.querySelector('.status-badge');
+    if (badge) badge.textContent = `⚡ AI CONSOLE - PLAYER 0${playerId}`;
+
+    const savedData = localStorage.getItem(storageKey);
+    if (savedData) {
+        try {
+            const player = JSON.parse(savedData);
+            if (player.ai_name) document.getElementById('ai-name').value = player.ai_name;
+            if (player.ai_persona) document.getElementById('ai-persona').value = player.ai_persona;
+            if (player.ai_expertise) document.getElementById('ai-expertise').value = player.ai_expertise;
+            if (player.ai_motivation) document.getElementById('ai-motivation').value = player.ai_motivation;
+            if (player.ai_constraints) document.getElementById('ai-constraints').value = player.ai_constraints;
+        } catch (e) {
+            console.error('保存データの自動復元に失敗しました:', e);
+        }
+    }
+});
+    </script>
+
+</body>
+</html>

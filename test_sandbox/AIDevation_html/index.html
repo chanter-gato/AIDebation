@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI DEVIATION - ARENA</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<!-- 画面遷移＆データ引き継ぎ用ロジック -->
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const startBtn = document.querySelector('.start-btn');
+
+        startBtn.addEventListener('click', () => {
+            const themeInput = document.querySelector('.setup-section .input-group:nth-child(1) input');
+            const turnInput = document.querySelector('.setup-section .input-group:nth-child(2) input');
+            const apiKeyInput = document.querySelector('.setup-section .input-group:nth-child(3) input');
+
+            const theme = themeInput ? themeInput.value.trim() : '';
+            const totalTurns = turnInput ? turnInput.value : '3';
+            const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+
+            if (!theme) {
+                alert('THEME（ディベートのお題）を入力してください！');
+                return;
+            }
+
+            // 登録されているプレイヤー（ID 1〜4）を検索して参加者リストを作成
+            let activePlayerIds = [];
+            for (let i = 1; i <= 4; i++) {
+                if (localStorage.getItem(`devate_player_${i}`)) {
+                    activePlayerIds.push(String(i));
+                }
+            }
+        
+            // プレイヤーが2人未満の場合はデフォルトで1と2をセット
+            if (activePlayerIds.length < 2) {
+                activePlayerIds = ['1', '2'];
+            }
+
+            // LocalStorage に設定を保存
+            localStorage.setItem('devate_current_theme', theme);
+            localStorage.setItem('devate_total_turns', totalTurns);
+            localStorage.setItem('devate_active_player_ids', JSON.stringify(activePlayerIds)); // 参加者全員のIDを配列で渡す
+        
+            if (apiKey) localStorage.setItem('devate_gemini_apikey', apiKey);
+
+            window.location.href = 'battle-arena.html';
+        });
+    });
+</script>
+<body>
+
+    <div class="arena-container">
+        
+        <!-- ヘッダー：光り輝くタイトル -->
+        <header class="arena-header">
+            <h1 class="arena-title">⚡ AI DEVIATION ⚡</h1>
+            <p class="subtitle">CUSTOM PERSONA BATTLE ARENA</p>
+        </header>
+
+        <!-- メイングリッドエリア -->
+        <div class="main-grid">
+            
+            <!-- 左側：バトル設定エリア -->
+            <div class="setup-section">
+                <div class="input-group">
+                    <label>THEME</label>
+                    <input type="text" placeholder="戦いの舞台・お題を入力...">
+                </div>
+                
+                <div class="input-group">
+                    <label>TURN</label>
+                    <input type="number" value="1" min="1">
+                </div>
+                
+                <div class="input-group">
+                    <label>GEMINI APIKEY</label>
+                    <input type="password" placeholder="Paste your API Key here">
+                </div>
+            </div>
+            
+            <!-- 右側：ルール＆ジャッジ -->
+            <div class="side-section">
+                <a href="rule-setting.html" class="rule-btn" style="text-decoration: none; display: block; text-align: center;">📜 Rule</a>
+                
+                <a href="judge-setting.html" class="card judge-card" style="text-decoration: none;">
+                    <div class="card-glow"></div>
+                    <div class="avatar-icon judge-icon">⚖️</div>
+                    <div class="card-label">JUDGE AI</div>
+                </a>
+            </div>
+            
+        </div>
+
+        <!-- 中央セクションタイトル -->
+        <h2 class="section-title">⚔️ READY PERSONAS ⚔️</h2>
+
+        <!-- 下部：自作ペルソナ（プレイヤー）エリア -->
+        <div class="players-section">
+            <!-- プレイヤー 1 -->
+            <a href="persona-setting.html?id=1" class="card player-card p-red" style="text-decoration: none;">
+                <div class="card-glow"></div>
+                <div class="avatar-icon">🔥</div>
+                <div class="card-label">AI_01_WARRIOR</div>
+                <span class="upload-badge">CUSTOM</span>
+            </a>
+            <!-- プレイヤー 2 -->
+            <a href="persona-setting.html?id=2" class="card player-card p-blue" style="text-decoration: none;">
+                <div class="card-glow"></div>
+                <div class="avatar-icon">🧙‍♂️</div>
+                <div class="card-label">AI_02_WIZARD</div>
+                <span class="upload-badge">CUSTOM</span>
+            </a>
+            <!-- プレイヤー 3 -->
+            <a href="persona-setting.html?id=3" class="card player-card p-green" style="text-decoration: none;">
+                <div class="card-glow"></div>
+                <div class="avatar-icon">🧝‍♀️</div>
+                <div class="card-label">AI_03_ELF</div>
+                <span class="upload-badge">CUSTOM</span>
+            </a>
+            <!-- プレイヤー 4 -->
+            <a href="persona-setting.html?id=4" class="card player-card p-purple" style="text-decoration: none;">
+                <div class="card-glow"></div>
+                <div class="avatar-icon">🧪</div>
+                <div class="card-label">AI_04_ROGUE</div>
+                <span class="upload-badge">CUSTOM</span>
+            </a>
+        </div>
+
+        <!-- 最下部：バトル開始ボタン -->
+        <div class="action-section">
+            <button class="start-btn">DEVATION START 🚀</button>
+        </div>
+
+    </div>
+
+</body>
+</html>
