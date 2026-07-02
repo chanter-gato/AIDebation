@@ -35,5 +35,5 @@ pip install flask flask-cors google-generativeai
 
 ## 🚀Future Plans／今後の構想
 - **Creation of an intuitive UI／直感的なUIの作成**:  
-  Setting up HTML screens in the `ui/` directory and enabling the replacement of persona configuration files via drag-and-drop.  
-  `ui/` ディレクトリ配下にHTML画面を用意し、ペルソナ設定ファイルをドラッグ＆ドロップで差し替え可能にする  
+  Easily swap persona configuration files using intuitive drag-and-drop.  
+  ペルソナ設定ファイルをドラッグ＆ドロップで差し替え可能にする  
