@@ -1,0 +1,255 @@
+/* 全体のリセット */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background: radial-gradient(circle at center, #ffffff 0%, #e0f2fe 100%);
+    color: #1e293b;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.architect-container {
+    width: 100%;
+    max-width: 650px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 3px solid #f59e0b; 
+    border-radius: 20px;
+    padding: 35px;
+    box-shadow: 0 20px 40px rgba(245, 158, 11, 0.15),
+                0 0 30px rgba(245, 158, 11, 0.05) inset;
+    backdrop-filter: blur(10px);
+}
+
+.architect-header {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.status-badge {
+    display: inline-block;
+    background: #f59e0b;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 900;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.architect-title {
+    font-size: 32px;
+    font-weight: 900;
+    color: #d97706;
+    letter-spacing: 1px;
+}
+
+.subtitle {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 5px;
+    font-weight: 500;
+}
+
+.architect-form {
+    display: flex;
+    flex-direction: column;
+    gap: 25px; 
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.form-group label .en {
+    color: #d97706;
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+}
+
+.form-group label .jp {
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    background: #f8fafc;
+    border: 2px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 14px 16px;
+    color: #1e293b;
+    font-size: 15px;
+    font-weight: 600;
+    outline: none;
+    resize: none;
+    transition: all 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    border-color: #f59e0b;
+    background: #ffffff;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
+}
+
+::placeholder {
+    color: #cbd5e1;
+    font-weight: 500;
+}
+
+/* アイコン選択エリア */
+.icon-selector {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.icon-btn {
+    font-size: 24px;
+    padding: 8px;
+    background: #f8fafc;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.icon-btn:hover {
+    background: #e2e8f0;
+    transform: scale(1.1);
+}
+
+.icon-btn.selected {
+    background: #f59e0b;
+    border-color: #d97706;
+    transform: scale(1.15);
+}
+
+.selected-icon-display {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 600;
+}
+
+#icon-preview {
+    font-size: 20px;
+}
+
+/* 4つのボタンを並べるマトリクスグリッド */
+.action-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.btn {
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 900;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    text-decoration: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+/* 上段・左：戻る */
+.btn-back {
+    background: #e2e8f0;
+    color: #64748b;
+    border: 2px solid #cbd5e1;
+}
+
+.btn-back:hover {
+    background: #cbd5e1;
+    color: #475569;
+}
+
+/* 上段・右：保存（ジャッジのテーマカラー） */
+.btn-save {
+    background: #fbbf24;
+    color: #ffffff;
+    border: 2px solid #f59e0b;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.btn-save:hover {
+    background: #f59e0b;
+    box-shadow: 0 6px 15px rgba(245, 158, 11, 0.3);
+}
+
+/* 下段・左：JSON読み込み */
+.btn-import {
+    background: #fffbeb;
+    color: #d97706;
+    border: 2px solid #fde68a;
+}
+
+.btn-import:hover {
+    background: #fef3c7;
+    border-color: #fcd34d;
+}
+
+/* 下段・右：JSON書き出し */
+.btn-export {
+    background: #ffffff;
+    color: #b45309;
+    border: 2px solid #fef3c7;
+}
+
+.btn-export:hover {
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+
+/* スマホ対応 */
+@media (max-width: 480px) {
+    .architect-container {
+        padding: 20px;
+    }
+    .action-actions-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}

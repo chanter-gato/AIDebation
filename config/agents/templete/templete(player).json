@@ -1,9 +1,0 @@
-{
-  "name": "ここに名前を入れる",
-  "persona": "ここに性格や口調を書く（例: 毒舌、丁寧、語尾がぽわぽわ）",
-  "expertise": ["専門分野1", "専門分野2"],
-  "motivation": "討論に参加する目的",
-  "constraints": "話し方の制約（例: 短く話す、専門用語は避ける）",
-  "api_key": "ここにAPIキーを入力（なければ空欄でOK）",
-  "model": "models/gemini-3.1-flash-lite"
-}

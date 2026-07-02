@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI DEBATION - ARENA</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<!-- 画面遷移＆データ引き継ぎ用ロジック -->
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        // 入力フィールドの値をlocalStorageから復元
+        const themeInput = document.querySelector('.setup-section .input-group:nth-child(1) input');
+        const turnInput = document.querySelector('.setup-section .input-group:nth-child(2) input');
+        const apiKeyInput = document.querySelector('.setup-section .input-group:nth-child(3) input');
+
+        if (themeInput) {
+            const savedTheme = localStorage.getItem('devate_current_theme');
+            if (savedTheme) themeInput.value = savedTheme;
+        }
+
+        if (turnInput) {
+            const savedTurn = localStorage.getItem('devate_total_turns');
+            if (savedTurn) turnInput.value = savedTurn;
+        }
+
+        if (apiKeyInput) {
+            const savedApiKey = localStorage.getItem('devate_gemini_apikey');
+            if (savedApiKey) apiKeyInput.value = savedApiKey;
+        }
+
+        // 入力値が変更されるたびにlocalStorageに保存
+        if (themeInput) {
+            themeInput.addEventListener('input', () => {
+                localStorage.setItem('devate_current_theme', themeInput.value);
+            });
+        }
+
+        if (turnInput) {
+            turnInput.addEventListener('input', () => {
+                localStorage.setItem('devate_total_turns', turnInput.value);
+            });
+        }
+
+        if (apiKeyInput) {
+            apiKeyInput.addEventListener('input', () => {
+                localStorage.setItem('devate_gemini_apikey', apiKeyInput.value);
+            });
+        }
+
+        // デモモードトグルの状態を復元
+        const demoToggle = document.getElementById('demo-mode-toggle');
+        if (demoToggle) {
+            const savedDemoMode = localStorage.getItem('devate_demo_mode');
+            if (savedDemoMode === 'true') {
+                demoToggle.checked = true;
+            }
+
+            // デモモードの状態を保存
+            demoToggle.addEventListener('change', () => {
+                localStorage.setItem('devate_demo_mode', demoToggle.checked);
+            });
+        }
+
+        // プレイヤーチェックボックスの状態を保存・復元
+        const playerCheckboxes = document.querySelectorAll('.player-checkbox');
+        playerCheckboxes.forEach(checkbox => {
+            // 1. 状態の復元
+            const savedState = localStorage.getItem(`devate_player_check_${checkbox.value}`);
+            if (savedState !== null) {
+                checkbox.checked = (savedState === 'true');
+            }
+
+            // 2. 状態の保存
+            checkbox.addEventListener('change', () => {
+                localStorage.setItem(`devate_player_check_${checkbox.value}`, checkbox.checked);
+            });
+        });
+
+        // 各プレイヤーカードの表示名とアイコンをlocalStorageから読み込んで更新
+        for (let i = 1; i <= 4; i++) {
+            const storageKey = `devate_player_${i}`;
+            const savedData = localStorage.getItem(storageKey);
+            if (savedData) {
+                try {
+                    const player = JSON.parse(savedData);
+                    if (player.ai_name) {
+                        const cardLabel = document.querySelector(`#player${i} + .player-card .card-label`);
+                        if (cardLabel) {
+                            cardLabel.textContent = player.ai_name;
+                        }
+                    }
+                    if (player.ai_icon) {
+                        const avatarIcon = document.querySelector(`#player${i} + .player-card .avatar-icon`);
+                        if (avatarIcon) {
+                            avatarIcon.textContent = player.ai_icon;
+                        }
+                    }
+                } catch (e) {
+                    console.error(`プレイヤー${i}のデータ読み込みに失敗しました:`, e);
+                }
+            }
+        }
+
+        // ジャッジカードの表示名とアイコンをlocalStorageから読み込んで更新
+        const judgeData = localStorage.getItem('devate_judge');
+        if (judgeData) {
+            try {
+                const judge = JSON.parse(judgeData);
+                if (judge.judge_name) {
+                    const cardLabel = document.querySelector('.judge-card .card-label');
+                    if (cardLabel) {
+                        cardLabel.textContent = judge.judge_name;
+                    }
+                }
+                if (judge.judge_icon) {
+                    const avatarIcon = document.querySelector('.judge-card .avatar-icon');
+                    if (avatarIcon) {
+                        avatarIcon.textContent = judge.judge_icon;
+                    }
+                }
+            } catch (e) {
+                console.error('ジャッジデータの読み込みに失敗しました:', e);
+            }
+        }
+
+        const startBtn = document.querySelector('.start-btn');
+
+        startBtn.addEventListener('click', () => {
+            const themeInput = document.querySelector('.setup-section .input-group:nth-child(1) input');
+            const turnInput = document.querySelector('.setup-section .input-group:nth-child(2) input');
+            const apiKeyInput = document.querySelector('.setup-section .input-group:nth-child(3) input');
+
+            const theme = themeInput ? themeInput.value.trim() : '';
+            const totalTurns = turnInput ? turnInput.value : '3';
+            const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+
+            if (!theme) {
+                alert('THEME（ディベートのお題）を入力してください！');
+                return;
+            }
+
+            // チェックボックスで選択されたプレイヤーを取得
+            let activePlayerIds = [];
+            const checkboxes = document.querySelectorAll('.player-checkbox:checked');
+            checkboxes.forEach(checkbox => {
+                activePlayerIds.push(checkbox.value);
+            });
+        
+            // プレイヤーが2人未満の場合はエラー
+            if (activePlayerIds.length < 2) {
+                alert('プレイヤーを2人以上選択してください！');
+                return;
+            }
+            if (activePlayerIds.length > 4) {
+                alert('プレイヤーは4人までです！');
+                return;
+            }
+
+            // LocalStorage に設定を保存
+            localStorage.setItem('devate_current_theme', theme);
+            localStorage.setItem('devate_total_turns', totalTurns);
+            localStorage.setItem('devate_active_player_ids', JSON.stringify(activePlayerIds)); // 参加者全員のIDを配列で渡す
+        
+            if (apiKey) localStorage.setItem('devate_gemini_apikey', apiKey);
+
+            window.location.href = 'battle-arena.html';
+        });
+    });
+</script>
+<body>
+
+    <div class="arena-container">
+        
+        <!-- ヘッダー：光り輝くタイトル -->
+        <header class="arena-header">
+            <h1 class="arena-title">⚡ AI DEBATION ⚡</h1>
+            <p class="subtitle">CUSTOM PERSONA BATTLE ARENA</p>
+        </header>
+
+        <!-- メイングリッドエリア -->
+        <div class="main-grid">
+            
+            <!-- 左側：バトル設定エリア -->
+            <div class="setup-section">
+                <div class="input-group">
+                    <label>THEME</label>
+                    <input type="text" placeholder="戦いの舞台・お題を入力...">
+                </div>
+                
+                <div class="input-group">
+                    <label>TURN</label>
+                    <input type="number" value="1" min="1">
+                </div>
+                
+                <div class="input-group">
+                    <label>GEMINI APIKEY</label>
+                    <input type="password" placeholder="Paste your API Key here">
+                </div>
+            </div>
+            
+            <!-- 右側：ルール＆ジャッジ -->
+            <div class="side-section">
+                <a href="rule-setting.html" class="rule-btn" style="text-decoration: none; display: block; text-align: center;">📜 Rule</a>
+
+                <div class="demo-toggle">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="demo-mode-toggle" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-text">デモモード</span>
+                    </label>
+                </div>
+
+                <a href="judge-setting.html" class="card judge-card" style="text-decoration: none;">
+                    <div class="card-glow"></div>
+                    <div class="avatar-icon judge-icon">⚖️</div>
+                    <div class="card-label">JUDGE AI</div>
+                </a>
+            </div>
+            
+        </div>
+
+        <!-- 中央セクションタイトル -->
+        <h2 class="section-title">⚔️ READY PERSONAS ⚔️</h2>
+
+        <!-- 下部：自作ペルソナ（プレイヤー）エリア -->
+        <div class="players-section">
+            <!-- プレイヤー 1 -->
+            <div class="player-wrapper">
+                <input type="checkbox" id="player1" class="player-checkbox" value="1" checked>
+                <a href="persona-setting.html?id=1" class="card player-card p-red" style="text-decoration: none;">
+                    <div class="card-glow"></div>
+                    <div class="avatar-icon">🔥</div>
+                    <div class="card-label">AI_01_WARRIOR</div>
+                    <span class="upload-badge">CUSTOM</span>
+                </a>
+            </div>
+            <!-- プレイヤー 2 -->
+            <div class="player-wrapper">
+                <input type="checkbox" id="player2" class="player-checkbox" value="2" checked>
+                <a href="persona-setting.html?id=2" class="card player-card p-blue" style="text-decoration: none;">
+                    <div class="card-glow"></div>
+                    <div class="avatar-icon">🧙‍♂️</div>
+                    <div class="card-label">AI_02_WIZARD</div>
+                    <span class="upload-badge">CUSTOM</span>
+                </a>
+            </div>
+            <!-- プレイヤー 3 -->
+            <div class="player-wrapper">
+                <input type="checkbox" id="player3" class="player-checkbox" value="3">
+                <a href="persona-setting.html?id=3" class="card player-card p-green" style="text-decoration: none;">
+                    <div class="card-glow"></div>
+                    <div class="avatar-icon">🧝‍♀️</div>
+                    <div class="card-label">AI_03_ELF</div>
+                    <span class="upload-badge">CUSTOM</span>
+                </a>
+            </div>
+            <!-- プレイヤー 4 -->
+            <div class="player-wrapper">
+                <input type="checkbox" id="player4" class="player-checkbox" value="4">
+                <a href="persona-setting.html?id=4" class="card player-card p-purple" style="text-decoration: none;">
+                    <div class="card-glow"></div>
+                    <div class="avatar-icon">🧪</div>
+                    <div class="card-label">AI_04_ROGUE</div>
+                    <span class="upload-badge">CUSTOM</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- 最下部：バトル開始ボタン -->
+        <div class="action-section">
+            <button class="start-btn">START DEBATION 🚀</button>
+        </div>
+
+    </div>
+
+</body>
+</html>
