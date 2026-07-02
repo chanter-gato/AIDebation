@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI DEVIATION - BATTLE ARENA</title>
+    <link rel="stylesheet" href="css/style-battle.css">
+</head>
+<body>
+
+    <div class="arena-container">
+        <header class="arena-header">
+            <div class="match-title">DEBATE MATCH</div>
+            <div class="topic-box">
+                <span class="topic-label">THEME</span>
+                <h1 class="topic-text" id="battle-theme">ディベートテーマを読み込み中...</h1>
+            </div>
+        </header>
+
+        <main class="battle-timeline" id="battle-timeline">
+        </main>
+
+        <footer class="arena-footer">
+            <a href="index.html" class="btn btn-exit">アリーナを終了して戻る</a>
+            <button type="button" class="btn btn-sound" id="sound-btn">🔊 音声ON</button>
+            <button type="button" class="btn btn-pause" id="pause-btn" style="display: none;">一時停止</button>
+            <button type="button" class="btn btn-next" id="next-turn-btn">ディベートを開始する</button>
+        </footer>
+    </div>
+
+    <script>
+// --- グローバル管理変数 ---
+let ruleData = null;
+let judgeData = null;
+let activePlayers = [];
+
+let currentRound = 1;
+let totalRounds = 3;
+let apiKey = "";
+let theme = "";
+let debateHistory = [];
+
+let turnQueue = [];
+let currentPhase = "START";
+let isPaused = false;
+let isSoundEnabled = false;
+let isDemoMode = false; 
+
+// 1. 初期化処理
+window.addEventListener('DOMContentLoaded', () => {
+    theme = localStorage.getItem('devate_current_theme') || "テーマ未設定";
+    totalRounds = parseInt(localStorage.getItem('devate_total_turns')) || 3;
+    apiKey = localStorage.getItem('devate_gemini_apikey') || "";
+    isDemoMode = localStorage.getItem('devate_demo_mode') === 'true';
+    document.getElementById('battle-theme').textContent = theme;
+
+    if (isDemoMode) {
+        document.getElementById('battle-theme').textContent += " (デモモード)";
+    }
+
+    ruleData = JSON.parse(localStorage.getItem('devate_rules') || "{}");
+    judgeData = JSON.parse(localStorage.getItem('devate_judge') || "{}");
+
+    const idsStr = localStorage.getItem('devate_active_player_ids');
+    const playerIds = idsStr ? JSON.parse(idsStr) : ['1', '2'];
+
+    playerIds.forEach(id => {
+        const pData = localStorage.getItem(`devate_player_${id}`);
+        if (pData) {
+            const parsed = JSON.parse(pData);
+            parsed.id = id;
+            activePlayers.push(parsed);
+        }
+    });
+
+    if (activePlayers.length < 2) {
+        activePlayers = [
+            { ai_name: "PLAYER 1", isLeft: true },
+            { ai_name: "PLAYER 2", isLeft: false }
+        ];
+    }
+});
+
+// 2. Python (api_bridge.py) へ通信を委譲するロジック
+async function callGemini(systemInstruction, userPrompt) {
+    // デモモードの場合は固定レスポンスを返す
+    if (isDemoMode) {
+        return getDemoResponse();
+    }
+
+    if (!apiKey) throw new Error("APIキーが設定されていません。");
+
+    const response = await fetch('http://127.0.0.1:5000/generate', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            api_key: apiKey,
+            system_prompt: systemInstruction,
+            user_prompt: userPrompt
+        })
+    });
+
+    if (!response.ok) throw new Error("通信に失敗しました");
+    const data = await response.json();
+    return data.reply;
+}
+
+// デモモード用の固定レスポンス
+function getDemoResponse() {
+    const demoResponses = [
+        "このテーマについては、私の視点から見ると非常に重要な側面があります。まず第一に、経済的影響を考慮すべきです。",
+        "反論があります。あなたの論点は確かに一理ありますが、社会的な観点から見ると別の解釈も可能です。",
+        "歴史的背景を考えると、この問題は単純ではありません。過去の事例から学ぶべき教訓があります。",
+        "技術的な進歩は確かに重要ですが、同時に倫理的な側面も無視できません。バランスが必要です。",
+        "データに基づくと、あなたの主張にはいくつかの誤解があります。正確な情報を提示しましょう。",
+        "環境問題との関連性も考慮すべきです。持続可能な解決策が求められています。",
+        "文化的な違いを尊重することも重要です。一つの視点だけで判断するのは危険です。",
+        "長期的な視点で見ると、現在の提案にはリスクもあります。慎重なアプローチが必要です。",
+        "個人の自由と社会の利益のバランスをどう取るかが鍵となります。",
+        "国際的な比較を行うと、より良い解決策が見つかるかもしれません。"
+    ];
+
+    return demoResponses[Math.floor(Math.random() * demoResponses.length)];
+}
+
+// 2.5. 音声読み上げ機能
+function speakText(text) {
+    if (!isSoundEnabled || !window.speechSynthesis) return;
+
+    // 現在の音声を停止
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ja-JP';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    // 日本語音声を探す
+    const voices = window.speechSynthesis.getVoices();
+    const japaneseVoice = voices.find(voice => voice.lang === 'ja-JP' || voice.lang === 'ja_JP');
+    if (japaneseVoice) {
+        utterance.voice = japaneseVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+}
+
+// 音声リストの読み込み（非同期）
+window.speechSynthesis.onvoiceschanged = () => {
+    window.speechSynthesis.getVoices();
+};
+
+// 3. ゲーム進行・シャッフルロジック
+document.getElementById('next-turn-btn').addEventListener('click', async function() {
+    const nextBtn = this;
+    nextBtn.style.display = 'none';
+    document.getElementById('pause-btn').style.display = 'inline-block';
+    await processDebate();
+});
+
+document.getElementById('pause-btn').addEventListener('click', function() {
+    isPaused = !isPaused;
+    this.textContent = isPaused ? "再開" : "一時停止";
+});
+
+document.getElementById('sound-btn').addEventListener('click', function() {
+    isSoundEnabled = !isSoundEnabled;
+    this.textContent = isSoundEnabled ? "🔊 音声ON" : "🔇 音声OFF";
+});
+
+async function processDebate() {
+    const nextBtn = document.getElementById('next-turn-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+
+    try {
+        if (currentPhase === "START") {
+            appendTurnSection(currentRound);
+            turnQueue = [...activePlayers].sort(() => Math.random() - 0.5);
+            currentPhase = "SPEAKING";
+        }
+
+        if (currentPhase === "SPEAKING") {
+            while (turnQueue.length > 0 && !isPaused) {
+                const activePlayer = turnQueue.shift();
+                pauseBtn.textContent = `${activePlayer.ai_name} 思考中...`;
+
+                // ruleDataの中身が存在する場合はテキストとして追加し、無い場合は空文字にする
+                const guideline = ruleData.behavior_guideline ? `\n【行動指針】${ruleData.behavior_guideline}` : "";
+                const chatRule = ruleData.conversation_rule ? `\n【会話ルール】${ruleData.conversation_rule}` : "";
+
+                const systemPrompt = `あなたは ${activePlayer.ai_name} です。性格: ${activePlayer.ai_persona}。お題: ${theme}。${guideline}${chatRule}\n相手の発言を踏まえ、自身のペルソナを厳格に守って発言してください。`;
+                const userPrompt = `これまでの議論: ${debateHistory.join('\n')}\nあなたの発言:`;
+
+                const reply = await callGemini(systemPrompt, userPrompt);
+
+                await appendMessage(activePlayer.ai_name, reply, activePlayer.ai_icon, activePlayer.id);
+                speakText(reply);
+                debateHistory.push(`${activePlayer.ai_name}: ${reply}`);
+
+                if (isPaused) {
+                    pauseBtn.textContent = "再開";
+                    return;
+                }
+
+                // 発言間のインターバル
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            if (!isPaused) {
+                if (currentRound >= totalRounds) {
+                    currentPhase = "JUDGE";
+                } else {
+                    currentRound++;
+                    currentPhase = "START";
+                    await processDebate();
+                }
+            }
+        }
+
+        if (currentPhase === "JUDGE" && !isPaused) {
+            pauseBtn.textContent = "審判中...";
+            let judgeReply;
+            let finalWinner = "判定終了";
+            let finalReason = "";
+
+            if (isDemoMode) {
+                finalWinner = "プレイヤー1";
+                finalReason = "1. 論理的一貫性が高かった\n2. 具体的な例示が豊富だった\n3. 反論に対する対応が適切だった\n\n総合的に見て、より説得力のある議論を展開しました。";
+            } else {
+                // AIに確実に指定のJSONフォーマットで返させるための厳格なプロンプト
+                const judgeSystemPrompt = `あなたは公平な審判です。議論を評価し、必ず指定のJSONフォーマットのみで出力してください。説明文やマークダウンの囲み（\`\`\`jsonなど）は一切不要です。
+                {
+                    "winner": "勝者の名前（例：ブチョーの勝利）",
+                    "reason": "詳細な判定理由"
+                }`;
+                
+                judgeReply = await callGemini(judgeSystemPrompt, `テーマ: ${theme}\n議論: ${debateHistory.join('\n')}`);
+                
+                try {
+                    // AIが余計なマークダウン（```json）をつけてきた場合に取り除く
+                    let cleanStr = judgeReply.replace(/```json/g, '').replace(/```/g, '').trim();
+                    let parsed = JSON.parse(cleanStr);
+                    
+                    // JSONから勝者と理由を抽出（AIの揺らぎにも対応）
+                    finalWinner = parsed.winner || parsed.判定 || parsed.勝者 || "判定終了";
+                    finalReason = parsed.reason || parsed.判定理由 || parsed.理由 || cleanStr;
+                } catch (e) {
+                    console.error("JSON解析エラー:", e);
+                    // 万が一解析に失敗した場合はそのまま表示
+                    finalWinner = "判定結果";
+                    finalReason = judgeReply;
+                }
+            }
+
+            // 抽出した勝者（finalWinner）と理由（finalReason）を画面に渡す
+            appendJudgeSection(judgeData.judge_name || "JUDGE", finalWinner, finalReason);
+            if (!isDemoMode) speakText(finalReason);
+            currentPhase = "END";
+            pauseBtn.style.display = 'none';
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert(`エラー: ${error.message}`);
+        pauseBtn.style.display = 'none';
+        nextBtn.style.display = 'inline-block';
+        nextBtn.textContent = "リトライ";
+    }
+}
+
+// --- UI表示関数 ---
+function appendMessage(name, text, icon, playerId) {
+    return new Promise((resolve) => {
+        const tl = document.getElementById('battle-timeline');
+        const wrapper = document.createElement('div');
+        wrapper.className = `message-wrapper player-${playerId}`;
+        wrapper.innerHTML = `<div class="speaker-meta"><span class="speaker-icon">${icon || '🤖'}</span><span class="speaker-name">${name}</span></div><div class="speech-bubble"></div>`;
+        tl.appendChild(wrapper);
+
+        const bubble = wrapper.querySelector('.speech-bubble');
+        let index = 0;
+
+        function typeWriter() {
+            if (index < text.length) {
+                let char = text.charAt(index);
+
+                // 句読点（。）が来たら改行して少し待機
+                if (char === '。') {
+                    bubble.innerHTML += char + '<br><br>';
+                    index++;
+                    scrollToBottom();
+                    // 句読点の後は少し長め（ms）に停止
+                    setTimeout(typeWriter, 500);
+                } else {
+                    // 通常の文字
+                    bubble.innerHTML += char;
+                    index++;
+                    scrollToBottom();
+                    // 通常の文字の間隔（ms）
+                    setTimeout(typeWriter, 80);
+                }
+            } else {
+                // 終了時：Promiseを解決
+                resolve();
+            }
+        }
+        typeWriter();
+    });
+}
+
+function scrollToBottom() {
+    const tl = document.getElementById('battle-timeline');
+    if (tl) tl.scrollTop = tl.scrollHeight;
+}
+
+function appendTurnSection(n) {
+    const tl = document.getElementById('battle-timeline');
+    tl.innerHTML += `<div class="timeline-section-turn">ROUND ${n}</div>`;
+}
+
+function appendJudgeSection(name, winner, reason) {
+    const tl = document.getElementById('battle-timeline');
+    const judgeSection = document.createElement('div');
+    judgeSection.className = 'timeline-section-judge';
+
+    // 勝者名を抽出（デモモード用）
+    let winnerName = winner;
+    if (reason.includes('勝者:')) {
+        const match = reason.match(/勝者:\s*(.+)/);
+        if (match) winnerName = match[1].trim();
+    }
+
+    // 判定理由を整形
+    let cleanReason = reason.replace(/【判定結果】[\s\S]*?勝者:\s*\S+\s*/, '').replace(/【判定理由】/, '').trim();
+
+    judgeSection.innerHTML = `
+        <div class="judge-badge">⚖️ JUDGMENT</div>
+        <div class="judge-box">
+            <div class="winner-announcement">
+                <span class="winner-icon">🏆</span>
+                <div class="winner-label">WINNER</div>
+                <div class="winner-name">${winnerName}</div>
+            </div>
+            <div class="judge-reason">
+                <div class="judge-reason-title">判定理由</div>
+                <div class="judge-name-inline">審判: ${name}</div>
+                ${cleanReason}
+            </div>
+        </div>
+    `;
+    tl.appendChild(judgeSection);
+    scrollToBottom();
+}
+    </script>
+</body>
+</html>

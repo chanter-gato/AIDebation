@@ -1,0 +1,211 @@
+/* 全体のリセット */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background: radial-gradient(circle at center, #ffffff 0%, #e0f2fe 100%);
+    color: #1e293b;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.architect-container {
+    width: 100%;
+    max-width: 650px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 3px solid #10b981; 
+    border-radius: 20px;
+    padding: 35px;
+    box-shadow: 0 20px 40px rgba(16, 185, 129, 0.15),
+                0 0 30px rgba(16, 185, 129, 0.05) inset;
+    backdrop-filter: blur(10px);
+}
+
+.architect-header {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.status-badge {
+    display: inline-block;
+    background: #10b981;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 900;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.architect-title {
+    font-size: 30px;
+    font-weight: 900;
+    color: #065f46;
+    letter-spacing: 1px;
+}
+
+.subtitle {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 5px;
+    font-weight: 500;
+}
+
+.architect-form {
+    display: flex;
+    flex-direction: column;
+    gap: 30px; 
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.form-group label .en {
+    color: #059669;
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+}
+
+.form-group label .jp {
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.form-group textarea {
+    width: 100%;
+    background: #f8fafc;
+    border: 2px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 14px 16px;
+    color: #1e293b;
+    font-size: 15px;
+    font-weight: 600;
+    outline: none;
+    resize: none;
+    line-height: 1.5;
+    transition: all 0.2s ease;
+}
+
+.form-group textarea:focus {
+    border-color: #10b981;
+    background: #ffffff;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+::placeholder {
+    color: #cbd5e1;
+    font-weight: 500;
+}
+
+/* ボタンエリア：2列×2段の4ボタンマトリクスグリッド */
+.action-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.btn {
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 900;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    text-decoration: none; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+/* 上段・左：戻る */
+.btn-back {
+    background: #e2e8f0;
+    color: #64748b;
+    border: 2px solid #cbd5e1;
+}
+
+.btn-back:hover {
+    background: #cbd5e1;
+    color: #475569;
+}
+
+/* 上段・右：保存（メイン操作） */
+.btn-save {
+    background: #10b981;
+    color: #ffffff;
+    border: 2px solid #059669;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.btn-save:hover {
+    background: #059669;
+    box-shadow: 0 6px 15px rgba(5, 150, 105, 0.3);
+}
+
+/* 下段・左：JSON読み込み（落ち着いたライムグリーン系） */
+.btn-import {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 2px solid #bbf7d0;
+}
+
+.btn-import:hover {
+    background: #dcfce7;
+    border-color: #86efac;
+}
+
+/* 下段・右：JSON書き出し（シックな白ベース） */
+.btn-export {
+    background: #ffffff;
+    color: #0f766e;
+    border: 2px solid #ccfbf1;
+}
+
+.btn-export:hover {
+    background: #f0fdfa;
+    border-color: #99f6e4;
+}
+
+/* スマホ対応 */
+@media (max-width: 480px) {
+    .architect-container {
+        padding: 20px;
+    }
+    .action-actions-grid {
+        grid-template-columns: 1fr; /* スマホでは縦1列に */
+        gap: 10px;
+    }
+}
